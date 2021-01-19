@@ -1,10 +1,10 @@
 from time import time_ns
-from foxram import Foxram
+from foxram import *
 
 
 def test(eq, act):
     start = time_ns()
-    pred = Foxram().solve(eq)
+    pred = solve(eq)
     end = time_ns() - start
     try:
         assert pred == act
@@ -16,9 +16,4 @@ def test(eq, act):
     return
 
 
-# test("3+5", 8.0)
-# test("4-5", -1.0)
-# test("3/5", 0.6)
-# test("3*-6", -18.0)
-# test("3 * 8 + -3 * 96 + 51 / 3", -247.0)
-print(Foxram.solve("2x + 5 + 100x - 3 - 3x - 10 = 18*x"))
+print(solve("-5(x + 5)^2 = 0"))
