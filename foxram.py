@@ -7,9 +7,10 @@ class Poly:
     def __init__(self, value, code=None):
         self.coefficients = {}
         self.code = code
-        assert type(value) == str
-        power, coefficient = self.extract(value)
-        self.coefficients[power] = coefficient
+        if value is not None:
+            assert type(value) == str
+            power, coefficient = self.extract(value)
+            self.coefficients[power] = coefficient
         return
 
     def compute(self, value):
@@ -59,8 +60,12 @@ class Poly:
                 self.coefficients[key] /= other.coefficients[key]
         return self
 
-    def strip(self):
-        return self
+    def __pow__(self, power, modulo=None):
+        temp = Poly.copy(self)
+        out = self
+        for _ in range(int(power.coefficients[0]) - 1):
+            out = out * temp
+        return out
 
     @staticmethod
     def extract(value):
@@ -98,6 +103,22 @@ class Poly:
                 self.coefficients[key] = -other.coefficients[key]
         return self
 
+    def tidy_roots(self, roots):
+        new_roots = []
+        for root in roots:
+            if root not in new_roots:
+                new_root = root
+                if int(new_root) == float(new_root):
+                    new_root = int(new_root)
+                if -new_root == new_root:
+                    new_roots = abs(new_root)
+                new_roots.append(new_root)
+        if len(new_roots) == 1:
+            return new_roots[0]
+        return new_roots
+
+
+
     def solve(self):
         if len(self.coefficients) == 1:
             return self.coefficients[0]
@@ -105,12 +126,14 @@ class Poly:
         for key in self.coefficients:
             key = int(key)
             poly[key] = self.coefficients[key]
-        return roots(poly[::-1])
+        return self.tidy_roots(roots(poly[::-1]))
 
-    def copy(self, other):
+    @classmethod
+    def copy(cls, other):
+        new = cls(None)
         for key in other.coefficients:
-            self.coefficients[key] = other.coefficients[key]
-        return
+            new.coefficients[key] = other.coefficients[key]
+        return new
 
     def derive(self):
         new = {
@@ -137,7 +160,8 @@ class Equation_Solver:
     def dense(exp):
         return "".join(char for char in exp if char != " ")
 
-    def remove_multiple_spaces(self, exp):
+    @staticmethod
+    def remove_multiple_spaces(exp):
         out = ""
         space = False
         for char in exp:
@@ -160,7 +184,7 @@ class Equation_Solver:
                 if i == 0 or exp[i - 1] in self.actions:
                     current += char
                 else:
-                    out += current + " " + char + " "
+                    out += " " + current + " " + char + " "
                     current = ""
             elif char not in self.actions:
                 current += char
@@ -211,7 +235,7 @@ class Equation_Solver:
     def find_bracket(exp):
         count = -1
         start = 0
-        for i, char in exp:
+        for i, char in enumerate(exp):
             if char == "(":
                 if count == -1:
                     count = 1
@@ -226,35 +250,52 @@ class Equation_Solver:
     def remove_brackets(self, exp):
         while self.bracket_in_exp(exp):
             start, end = self.find_bracket(exp)
-            print(start, end)
-            print(exp[start], exp[end])
-            exit()
+            inside = exp[start + 1:end]
+            cleaned_inside = self.clean(inside)
+            exp = exp[:start] + cleaned_inside + exp[end + 1:]
+        exp = self.remove_multiple_spaces(exp) + " "
         return exp
 
     def clean(self, exp):
-        print(exp)
-        print(self.bracket_in_exp(exp))
-        exit()
         if self.bracket_in_exp(exp):
             exp = self.remove_brackets(exp)
         index = self.find_index(exp)
-        left = index - 2
+        left = index - 1
         while exp[left] != " ":
             left -= 1
-        right = index + 2
-        while exp[right] != " ":
-            right += 1
+        right = index + 1
+        try:
+            while right + 1 != len(exp) or exp[right + 1] != " ":
+                right += 1
+        except IndexError:
+            print("INDEXXXX")
+            self.print_polys()
+            print(right)
+            print(exp)
+            print(index)
+            print(exp[index])
+            raise Exception("AAAAAAAAA")
         spliced = exp[left:right].strip().split(" ")
         try:
             a, action, b = spliced
         except ValueError:
             print("SPLIT !")
             print(exp)
+            print(exp[left:right])
             print(index)
             print(spliced)
-            raise Exception()
-        a = self.polys[a]
-        b = self.polys[b]
+            self.print_polys()
+            raise Exception("AAAAAAAAA")
+        try:
+            a = self.polys[a]
+            b = self.polys[b]
+        except KeyError:
+            print(a)
+            print(b)
+            print(self.polys)
+            print(spliced)
+            print(exp)
+            raise Exception("AAAAAAAAA")
         if action == "+":
             res = a + b
         elif action == "-":
@@ -266,7 +307,7 @@ class Equation_Solver:
         elif action == "^":
             res = a ** b
         else:
-            raise Exception()
+            raise Exception("AAAAAAAAA")
         exp = " " + exp[:left] + res.code + exp[right:]
         return exp
 
@@ -293,7 +334,7 @@ class Equation_Solver:
                 code = self.generate_Poly(value)
                 casted += code
                 if i + 1 < len(objs) and objs[i + 1] == "(":
-                    casted += " *"
+                    casted += " * "
             else:
                 casted += value
         return casted
